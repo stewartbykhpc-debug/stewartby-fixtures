@@ -4,7 +4,7 @@ from feedgen.feed import FeedGenerator
 
 URLS = ["https://fulltime.thefa.com/fixtures.html?league=1215610", "https://fulltime.thefa.com/fixtures.html?league=8441113"]
 VENUE_TARGET = "Stewartby Sports Field"
-FALLBACK_TEAMS = ["OB City", "AFC Clophill", "Stewartby"]
+FALLBACK_TEAMS = ["OB City", "AFC Clophill", "Stewartby", "United"]
 
 def get_fixtures():
     headers = {'User-Agent': 'Mozilla/5.0'}
