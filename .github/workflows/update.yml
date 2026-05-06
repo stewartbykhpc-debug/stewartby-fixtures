@@ -1,27 +1,38 @@
-name: Update Feed
+name: Update Stewartby Feed
 on:
   schedule:
-    - cron: '0 8 * * *'  # Runs daily at 8am
-  workflow_dispatch:      # Allows you to run it manually
+    # This runs at 08:05, 10:05, 12:05, 15:05, and 17:30 UTC
+    - cron: '05 08,10,12,15 * * *'
+    - cron: '30 17 * * *'
+  workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
+          python-version: '3.9'
+
       - name: Install dependencies
         run: pip install requests beautifulsoup4 feedgen
-      - name: Run Scraper
-        run: python main.py
-      - name: Commit and Push
+
+      - name: Run scraper (with 3 retries)
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_wait_seconds: 60
+          command: python main.py
+
+      - name: Commit and push changes
         run: |
-          git config user.name "GitHub Action"
-          git config user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
           git add stewartby_fixtures.xml
           git commit -m "Update fixtures" || exit 0
           git push
