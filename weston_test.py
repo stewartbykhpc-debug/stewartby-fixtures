@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 from feedgen.feed import FeedGenerator
 from datetime import datetime
 
+# Bedfordshire FA Sunday League URL
 URL = "https://fulltime.thefa.com/fixtures.html?league=1215610"
 TARGET_VENUE = "Weston Park Blue Cross Club"
 
@@ -25,18 +26,20 @@ def get_fixtures():
 fg = FeedGenerator()
 fg.title('Weston Park Blue Cross - TEST')
 fg.link(href=URL)
-fg.description(f'Last Checked: {datetime.now().strftime("%H:%M:%S")}')
+fg.description(f'Last Checked: {datetime.now().strftime("%d/%m/%Y %H:%M")}')
 
 found = get_fixtures()
 if not found:
-    # This is what you'll see in Feedly to prove it's working!
+    # This dummy entry ensures Feedly finds the feed today!
     fe = fg.add_entry()
+    fe.id('test-id-123')
     fe.title("SYSTEM CHECK: Weston Park Scraper is Live")
-    fe.description("No real matches found at Weston Park right now, but the automation is working perfectly.")
+    fe.description("The code is working. No real games at Weston Park today, but the 'plumbing' is ready for August.")
     fe.link(href=URL)
 else:
-    for m in found:
+    for i, m in enumerate(found):
         fe = fg.add_entry()
+        fe.id(f'match-{i}')
         fe.title(m['title'])
         fe.link(href=URL)
 
