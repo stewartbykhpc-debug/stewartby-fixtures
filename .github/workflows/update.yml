@@ -1,7 +1,6 @@
 name: Update Stewartby Feed
 on:
   schedule:
-    # This runs at 08:05, 10:05, 12:05, 15:05, and 17:30 UTC
     - cron: '05 08,10,12,15 * * *'
     - cron: '30 17 * * *'
   workflow_dispatch:
@@ -21,18 +20,18 @@ jobs:
       - name: Install dependencies
         run: pip install requests beautifulsoup4 feedgen
 
-      - name: Run scraper (with 3 retries)
+      - name: Run scraper scripts
         uses: nick-fields/retry@v3
         with:
           timeout_minutes: 5
           max_attempts: 3
           retry_wait_seconds: 60
-          command: run: python main.py && python weston_test.py
+          command: python main.py && python weston_test.py
 
       - name: Commit and push changes
         run: |
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
-          git add git add stewartby_fixtures.xml weston_test.xml
-          git commit -m "Update fixtures" || exit 0
+          git add stewartby_fixtures.xml weston_test.xml
+          git commit -m "Update fixtures and test feed" || exit 0
           git push
