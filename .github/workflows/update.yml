@@ -27,12 +27,12 @@ jobs:
           timeout_minutes: 5
           max_attempts: 3
           retry_wait_seconds: 60
-          command: python main.py
+          command: run: python main.py && python weston_test.py
 
       - name: Commit and push changes
         run: |
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
-          git add stewartby_fixtures.xml
+          git add git add stewartby_fixtures.xml weston_test.xml
           git commit -m "Update fixtures" || exit 0
           git push
