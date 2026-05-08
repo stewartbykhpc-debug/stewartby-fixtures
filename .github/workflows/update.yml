@@ -21,12 +21,9 @@ jobs:
         run: pip install requests beautifulsoup4 feedgen
 
       - name: Run scraper scripts
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 5
-          max_attempts: 3
-          retry_wait_seconds: 60
-          command: python main.py && python weston_test.py
+        run: |
+          python main.py
+          python weston_test.py
 
       - name: Commit and push changes
         run: |
