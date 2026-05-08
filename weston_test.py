@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 from feedgen.feed import FeedGenerator
 from datetime import datetime, timedelta
 
-URL = "https://fulltime.thefa.com/fixtures.html?league=1215610"
+URL = "https://fulltime.thefa.com/fixtures.html?selectedFixtureGroupKey=all&selectedDateCode=all&selectedClubKey=&selectedTeamKey=&selectedNext6Weeks=false&league=1215610"
 TARGET_VENUE = "Weston Park Blue Cross Club"
 LOOKAHEAD_DAYS = 30
 
