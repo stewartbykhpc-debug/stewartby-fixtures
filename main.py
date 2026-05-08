@@ -2,33 +2,45 @@ import requests
 from bs4 import BeautifulSoup
 from feedgen.feed import FeedGenerator
 
-URLS = ["https://fulltime.thefa.com/fixtures.html?league=1215610", "https://fulltime.thefa.com/fixtures.html?league=8441113"]
-VENUE_TARGET = "Stewartby Sports Field"
-FALLBACK_TEAMS = ["OB City", "AFC Clophill", "Stewartby"]
+# The "Master Key" URL that includes all Cups and Divisions
+URL = "https://fulltime.thefa.com/fixtures.html?selectedFixtureGroupKey=all&selectedDateCode=all&selectedClubKey=&selectedTeamKey=&selectedNext6Weeks=false&league=1215610"
+TARGET_VENUE = "Stewartby Sports Field"
 
 def get_fixtures():
     headers = {'User-Agent': 'Mozilla/5.0'}
+    response = requests.get(URL, headers=headers)
+    soup = BeautifulSoup(response.content, 'html.parser')
     matches = []
-    for url in URLS:
-        try:
-            r = requests.get(url, headers=headers, timeout=15)
-            soup = BeautifulSoup(r.content, 'html.parser')
-            for row in soup.find_all('tr', class_='fixture-row'):
-                home = row.find('td', class_='home-team').get_text(strip=True) if row.find('td', class_='home-team') else "Unknown"
-                away = row.find('td', class_='away-team').get_text(strip=True) if row.find('td', class_='away-team') else "Unknown"
-                venue_text = row.find('td', class_='venue').get_text(strip=True) if row.find('td', class_='venue') else "TBC"
-                include = False
-                if VENUE_TARGET.lower() in venue_text.lower(): include = True
-                elif "TBC" in venue_text.upper() and any(t.lower() in home.lower() for t in FALLBACK_TEAMS):
-                    include = True
-                    venue_text = f"TBC (Stewartby Fallback: {home})"
-                if include:
-                    matches.append({'title': f"{home} v {away}", 'desc': f"Venue: {venue_text}", 'link': url})
-        except: continue
+    
+    for row in soup.find_all('tr'):
+        venue_cell = row.find('td', class_='venue')
+        # This checks if the venue matches our village field
+        if venue_cell and TARGET_VENUE.lower() in venue_cell.text.lower():
+            home = row.find('td', class_='home-team').get_text(strip=True)
+            away = row.find('td', class_='away-team').get_text(strip=True)
+            dt_cell = row.find('td', class_='date-time')
+            match_date = dt_cell.get_text(strip=True) if dt_cell else "TBC"
+            
+            matches.append({
+                'title': f"{home} vs {away}",
+                'description': f"Date: {match_date} | Venue: {TARGET_VENUE}"
+            })
     return matches
 
 fg = FeedGenerator()
-fg.title('Stewartby Fixtures'); fg.link(href=URLS[0]); fg.description('Stewartby Tracker')
-for m in get_fixtures():
-    fe = fg.add_entry(); fe.title(m['title']); fe.description(m['desc']); fe.link(href=m['link'])
+fg.title('Stewartby Sports Field Fixtures')
+fg.link(href=URL)
+fg.description('Automated feed for all matches played at Stewartby')
+
+found_matches = get_fixtures()
+if not found_matches:
+    fe = fg.add_entry()
+    fe.title("No matches scheduled at Stewartby")
+    fe.description("The scraper checked the FA site, but no games are currently listed for this venue.")
+else:
+    for match in found_matches:
+        fe = fg.add_entry()
+        fe.title(match['title'])
+        fe.description(match['description'])
+
 fg.rss_file('stewartby_fixtures.xml')
