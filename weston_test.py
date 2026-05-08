@@ -3,65 +3,72 @@ from bs4 import BeautifulSoup
 from feedgen.feed import FeedGenerator
 from datetime import datetime, timedelta
 
-# 1. Config
 URL = "https://fulltime.thefa.com/fixtures.html?league=1215610"
 TARGET_VENUE = "Weston Park Blue Cross Club"
 LOOKAHEAD_DAYS = 30
 
 def get_fixtures():
     headers = {'User-Agent': 'Mozilla/5.0'}
-    response = requests.get(URL, headers=headers)
-    soup = BeautifulSoup(response.content, 'html.parser')
-    
-    matches = []
-    today = datetime.now()
-    future_limit = today + timedelta(days=LOOKAHEAD_DAYS)
+    try:
+        response = requests.get(URL, headers=headers)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        matches = []
+        today = datetime.now()
+        future_limit = today + timedelta(days=LOOKAHEAD_DAYS)
 
-    for row in soup.find_all('tr'):
-        venue_cell = row.find('td', class_='venue')
-        if venue_cell and TARGET_VENUE.lower() in venue_cell.text.lower():
-            # Extract the date string
-            date_cell = row.find('td', class_='date-time')
-            if not date_cell: continue
-            
-            date_text = date_cell.text.strip() # Usually looks like "Sun 10 May 26 10:30"
-            
+        # Look at every table row
+        for row in soup.find_all('tr'):
             try:
-                # We try to turn the FA text into a real date the computer understands
-                # Removing the day name (Sun/Mon) to make it easier to parse
-                clean_date = " ".join(date_text.split()[1:4]) # "10 May 26"
-                match_dt = datetime.strptime(clean_date, "%d %b %y")
+                # 1. Safety Check: Does this row have a venue?
+                venue_cell = row.find('td', class_='venue')
+                if not venue_cell or TARGET_VENUE.lower() not in venue_cell.text.lower():
+                    continue
+
+                # 2. Date Check: Extract and parse
+                date_cell = row.find('td', class_='date-time')
+                if not date_cell:
+                    continue
+
+                date_text = date_cell.text.strip()
+                # Attempt to parse: "Sun 18 May 26"
+                parts = date_text.split()
+                if len(parts) < 4: continue # Skip if date is weird like "TBC"
                 
-                # Check if it's between now and next month
+                clean_date = f"{parts[1]} {parts[2]} {parts[3]}" # "18 May 26"
+                match_dt = datetime.strptime(clean_date, "%d %b %y")
+
+                # 3. Filter: Only next 30 days
                 if today <= match_dt <= future_limit:
                     home = row.find('td', class_='home-team').text.strip()
                     away = row.find('td', class_='away-team').text.strip()
                     matches.append({
                         'title': f"{match_dt.strftime('%d/%m')}: {home} v {away}",
-                        'desc': f"Kickoff: {date_text}"
+                        'desc': f"Kickoff: {date_text} at {TARGET_VENUE}"
                     })
-            except Exception as e:
-                # If the FA format changes slightly, we still grab it just in case
-                print(f"Skipping row: {e}")
+            except:
+                continue # If one row is broken, just skip to the next!
 
-    return matches
+        return matches
+    except Exception as e:
+        print(f"Global Error: {e}")
+        return []
 
-# RSS Generation
+# --- RSS Generation ---
 fg = FeedGenerator()
 fg.title('Weston Park - Next 30 Days')
 fg.link(href=URL)
-fg.description(f'Updated {datetime.now().strftime("%d/%m %H:%M")}')
+fg.description(f'Last Scanned: {datetime.now().strftime("%d/%m %H:%M")}')
 
 found = get_fixtures()
 if not found:
     fe = fg.add_entry()
-    fe.id('no-games')
-    fe.title(f"No games at Weston Park for the next {LOOKAHEAD_DAYS} days")
-    fe.description("The scraper is working, but the schedule is clear.")
+    fe.id('no-games-found')
+    fe.title(f"No games at Weston Park until { (datetime.now() + timedelta(days=30)).strftime('%d %b') }")
+    fe.description("The plumbing is working, but no matches matched the criteria.")
 else:
-    for m in found:
+    for i, m in enumerate(found):
         fe = fg.add_entry()
-        fe.id(m['title'])
+        fe.id(f"match-{i}-{datetime.now().day}") # Unique ID for Feedly
         fe.title(m['title'])
         fe.description(m['desc'])
 
